@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#6600FF"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Salas"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<title>Despegar Salas</title>
+
+<!-- Google Identity Services (OAuth real) -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+
+<style>
+:root{
+  --brand:#6600FF;--brand2:#5533FF;--brl:#F0EAFF;--brm:#C9B3FF;
+  --bg:#F5F5F7;--surface:#FFFFFF;--border:#E0E0E0;--border2:#BDBDBD;
+  --text:#0D0D0D;--text2:#555;--text3:#888;
+  --ok:#1B5E20;--okbg:#E8F5E9;--okbd:#A5D6A7;
+  --err:#B71C1C;--errbg:#FFEBEE;--errbd:#EF9A9A;
+  --warn:#E65100;--warnbg:#FFF3E0;--warnbd:#FFCC80;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#0D0D0D;--surface:#1A1A1A;--border:#2A2A2A;--border2:#444;
+    --text:#F5F5F7;--text2:#AAA;--text3:#666;
+    --ok:#4CAF50;--okbg:#1B2E1B;--okbd:#2E5E2E;
+    --err:#EF5350;--errbg:#2E1B1B;--errbd:#5E2E2E;
+    --warn:#FFA726;--warnbg:#2E2210;--warnbd:#5E4010;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100dvh;display:flex;flex-direction:column}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+
+/* ── SAFE AREA ── */
+.safe-top{padding-top:calc(var(--safe-top) + 14px)}
+.safe-bot{padding-bottom:calc(var(--safe-bot) + 8px)}
+
+/* ── LOGIN ── */
+#login{position:fixed;inset:0;background:var(--brand);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;padding:32px}
+#login.hide{display:none}
+.login-logo{margin-bottom:32px;text-align:center}
+.login-logo svg{filter:drop-shadow(0 4px 24px rgba(0,0,0,.25))}
+.login-app-name{font-size:28px;font-weight:700;color:#fff;margin-top:14px;letter-spacing:-.5px}
+.login-sub{font-size:14px;color:rgba(255,255,255,.7);margin-top:4px}
+.login-card{background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:340px}
+.login-card-title{font-size:15px;font-weight:600;color:#0D0D0D;margin-bottom:18px;text-align:center}
+#google-btn-wrap{display:flex;justify-content:center}
+.login-divider{display:flex;align-items:center;gap:10px;margin:16px 0}
+.login-divider span{font-size:12px;color:#888}
+.login-divider-line{flex:1;height:1px;background:#E0E0E0}
+.login-email-input{width:100%;padding:11px 14px;border:1.5px solid #E0E0E0;border-radius:10px;font-size:14px;color:#0D0D0D;background:#F5F5F7;outline:none;margin-bottom:10px}
+.login-email-input:focus{border-color:var(--brand)}
+#btn-email-login{width:100%;padding:12px;background:var(--brand);border-radius:10px;color:#fff;font-size:14px;font-weight:600}
+.login-note{font-size:11px;color:rgba(255,255,255,.6);margin-top:20px;text-align:center}
+.login-error{font-size:12px;color:#B71C1C;background:#FFEBEE;border-radius:8px;padding:8px 12px;margin-bottom:10px;display:none}
+
+/* ── SPLASH ANIMADO ── */
+#splash{position:fixed;inset:0;background:var(--brand);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#splash.hide{animation:splashOut .4s ease forwards}
+@keyframes splashOut{to{opacity:0;pointer-events:none}}
+.splash-icon{animation:splashIn .6s cubic-bezier(.22,1,.36,1)}
+@keyframes splashIn{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.splash-text{color:rgba(255,255,255,.75);font-size:13px;margin-top:18px;animation:fadeUp .4s .5s both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── APP SHELL ── */
+#app{display:none;flex-direction:column;flex:1;height:100dvh}
+#app.show{display:flex}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--brand);padding:14px 16px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.topbar.other{background:var(--brand2)}
+.tb-back{color:rgba(255,255,255,.85);font-size:24px;display:flex;align-items:center;padding:0;line-height:1}
+.tb-info{flex:1;min-width:0}
+.tb-title{font-size:16px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-sub{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px}
+.tb-right{font-size:11px;color:rgba(255,255,255,.65);text-align:right;white-space:nowrap}
+.user-avatar{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.3);object-fit:cover}
+.user-initials{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+/* ── TELAS ── */
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+.screen.active{display:flex}
+.scrl{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--safe-bot) + 68px)}
+
+/* ── PAÍSES ── */
+.ctry-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 16px calc(var(--safe-bot) + 80px)}
+.sec-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:12px}
+.ctry-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.ctry-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 14px 18px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;transition:transform .1s;-webkit-active}
+.ctry-card:active{transform:scale(.97)}
+.ctry-flag{font-size:40px;line-height:1}
+.ctry-name{font-size:14px;font-weight:600;color:var(--text);text-align:center}
+.ctry-rooms{font-size:11px;color:var(--text3)}
+.alert-dot{position:absolute;top:10px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--err)}
+
+/* ── ROOM LIST ── */
+.room-item{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.ri-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.ri-inf{flex:1;min-width:0}
+.ri-nm{font-size:14px;font-weight:600;color:var(--text)}
+.ri-mt{font-size:12px;color:var(--text3);margin-top:2px}
+.badge{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap}
+.b-ok{background:var(--okbg);color:var(--ok);border:1px solid var(--okbd)}
+.b-al{background:var(--errbg);color:var(--err);border:1px solid var(--errbd)}
+.b-pe{background:var(--warnbg);color:var(--warn);border:1px solid var(--warnbd)}
+.b-nw{background:var(--brl);color:var(--brand)}
+.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 16px 18px}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+.sum-lbl{font-size:11px;color:var(--text3);margin-bottom:5px}
+.sum-val{font-size:24px;font-weight:700}
+
+/* ── CHECKLIST ── */
+.ck-hdr{padding:12px 16px 16px;flex-shrink:0}
+.ck-hdr.br{background:var(--brand)}.ck-hdr.ot{background:var(--brand2)}
+.ck-back{display:flex;align-items:center;gap:4px;font-size:14px;opacity:.85;color:#fff;padding:0;margin-bottom:10px;background:none}
+.ck-nm{font-size:19px;font-weight:700;color:#fff}
+.ck-sb{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px}
+.prog-wrap{background:rgba(255,255,255,.25);border-radius:4px;height:5px;margin-top:12px}
+.prog-fill{background:#fff;height:5px;border-radius:4px;transition:width .3s}
+.grp-ttl{font-size:11px;color:var(--text3);padding:14px 16px 6px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+.ci{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px}
+.ci-lbl{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px}
+.ci-dsc{font-size:12px;color:var(--text3)}
+.flag-row{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+.fb{display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--border2);background:var(--bg);color:var(--text2);min-height:36px}
+.fb:active{transform:scale(.96)}
+.fb.ok{background:var(--okbg);border-color:var(--okbd);color:var(--ok)}
+.fb.fail{background:var(--errbg);border-color:var(--errbd);color:var(--err)}
+.fb.na{background:var(--bg);border-color:var(--border);color:var(--text3)}
+
+/* ── UPLOAD DE FOTO ── */
+.photo-sec{margin-top:10px;display:none}
+.photo-sec.on{display:block}
+.upload-zone{display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px dashed var(--border2);border-radius:12px;background:var(--bg);position:relative;overflow:hidden;min-height:48px}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;font-size:0;cursor:pointer}
+.upload-zone-icon{font-size:22px}
+.upload-zone-txt{font-size:13px;color:var(--text3)}
+.upload-zone-txt b{color:var(--brand);font-weight:600}
+.thumbs-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.thumb{width:68px;height:68px;border-radius:10px;border:1.5px solid var(--border);overflow:hidden;position:relative;display:inline-block}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb-rm{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;z-index:2;line-height:1}
+
+/* ── MONITOR ── */
+.mon-hdr{background:var(--brand);padding:14px 16px 12px;flex-shrink:0}
+.live-row{display:flex;align-items:center;gap:6px;margin-top:4px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#4CAF50;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.mon-banner{margin:12px 16px;background:var(--errbg);border:1px solid var(--errbd);border-radius:14px;padding:14px}
+.mon-banner-title{font-size:14px;font-weight:700;color:var(--err)}
+.mon-banner-desc{font-size:12px;color:var(--err);opacity:.85;margin-top:3px}
+.mon-banner-btn{margin-top:10px;padding:7px 16px;border-radius:20px;font-size:12px;font-weight:700;background:var(--err);color:#fff}
+.mon-filter{display:flex;gap:7px;padding:8px 16px;overflow-x:auto;scrollbar-width:none;flex-shrink:0}
+.mon-filter::-webkit-scrollbar{display:none}
+.fbt{flex-shrink:0;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border2);background:var(--bg);color:var(--text2)}
+.fbt.active{background:var(--brand);border-color:var(--brand);color:#fff}
+.mon-room{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.mon-ico{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.mon-inf{flex:1;min-width:0}
+.mon-nm{font-size:14px;font-weight:600;color:var(--text)}
+.mon-loc{font-size:11px;color:var(--text3);margin-top:1px}
+.mon-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.mon-tag{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600}
+.tag-ok{background:var(--okbg);color:var(--ok)}
+.tag-fail{background:var(--errbg);color:var(--err)}
+.tag-warn{background:var(--warnbg);color:var(--warn)}
+.mon-time{font-size:10px;color:var(--text3);margin-top:6px}
+.mon-act{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;border:1.5px solid var(--errbd);background:var(--errbg);color:var(--err);white-space:nowrap;flex-shrink:0}
+
+/* ── BOTTOM NAV ── */
+.bnav{background:var(--surface);border-top:1px solid var(--border);display:flex;flex-shrink:0;padding-bottom:var(--safe-bot)}
+.ntab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 0;font-size:10px;color:var(--text3)}
+.ntab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ntab.active{color:var(--brand)}
+
+/* ── SHEETS ── */
+.sh-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;backdrop-filter:blur(2px)}
+.sh-ov.open{display:block}
+.sheet{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-radius:20px 20px 0 0;z-index:51;transform:translateY(100%);transition:transform .28s cubic-bezier(.32,1,.6,1);max-height:88dvh;overflow-y:auto;padding-bottom:var(--safe-bot)}
+.sheet.open{transform:translateY(0)}
+.sh-hdl{width:40px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 0}
+.sh-body{padding:16px 20px 28px}
+.sh-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px}
+.sh-sub{font-size:13px;color:var(--text3);margin-bottom:16px}
+.team-btn{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg);width:100%;margin-bottom:10px;text-align:left}
+.team-btn:active{transform:scale(.98)}
+.t-ico{font-size:22px;width:32px;text-align:center}
+.tnm{font-size:14px;font-weight:600;color:var(--text);display:block}
+.tds{font-size:12px;color:var(--text3);display:block;margin-top:1px}
+.sh-cancel{width:100%;padding:14px;border:1.5px solid var(--border2);border-radius:12px;font-size:14px;color:var(--text2);background:var(--bg);margin-top:4px}
+.rep-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.rep-row:last-child{border-bottom:none}
+.rep-nm{font-size:13px;color:var(--text)}
+.rs{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+.rs-ok{background:var(--okbg);color:var(--ok)}
+.rs-fail{background:var(--errbg);color:var(--err)}
+.rs-na{background:var(--bg);color:var(--text3)}
+.rs-pe{background:var(--warnbg);color:var(--warn)}
+.share-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.share-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px 8px;border-radius:14px;border:1px solid var(--border);background:var(--bg);font-size:13px;color:var(--text2)}
+.share-btn span{font-size:24px}
+.share-btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+
+/* ── INSTALL BANNER ── */
+#install-banner{display:none;background:var(--brand);padding:12px 16px;align-items:center;gap:12px;flex-shrink:0}
+#install-banner.show{display:flex}
+#install-banner p{flex:1;font-size:13px;color:#fff}
+#install-banner p b{display:block;font-weight:700}
+#btn-install{padding:8px 16px;background:#fff;border-radius:20px;color:var(--brand);font-size:13px;font-weight:700;white-space:nowrap}
+#btn-install-close{color:rgba(255,255,255,.7);font-size:20px;line-height:1;padding:0;background:none}
+</style>
+</head>
+<body>
+
+<!-- ══ SPLASH ══ -->
+<div id="splash">
+  <div class="splash-icon">
+    <svg width="100" height="100" viewBox="0 0 110 110" fill="none" aria-hidden="true">
+      <rect width="110" height="110" rx="26" fill="rgba(255,255,255,0.1)"/>
+      <ellipse cx="64" cy="55" rx="38" ry="44" fill="rgba(255,255,255,0.22)"/>
+      <path d="M18 12 H52 Q90 12 90 55 Q90 98 52 98 H18 Z" fill="white" opacity="0.95"/>
+      <ellipse cx="50" cy="55" rx="21" ry="28" fill="#6600FF"/>
+    </svg>
+  </div>
+  <div class="splash-text">Checklist de salas · Despegar</div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div id="login">
+  <div class="login-logo">
+    <svg width="72" height="72" viewBox="0 0 110 110" fill="none" aria-hidden="true">
+      <ellipse cx="64" cy="55" rx="38" ry="44" fill="rgba(255,255,255,0.22)"/>
+      <path d="M18 12 H52 Q90 12 90 55 Q90 98 52 98 H18 Z" fill="white" opacity="0.95"/>
+      <ellipse cx="50" cy="55" rx="21" ry="28" fill="#6600FF"/>
+    </svg>
+    <div class="login-app-name">despegar</div>
+    <div class="login-sub">Checklist de salas de reunião</div>
+  </div>
+
+  <div class="login-card">
+    <div class="login-card-title">Entrar com sua conta corporativa</div>
+    <!-- Google One Tap / Sign-In button renderizado aqui -->
+    <div id="google-btn-wrap"></div>
+
+    <div class="login-divider">
+      <div class="login-divider-line"></div>
+      <span>ou</span>
+      <div class="login-divider-line"></div>
+    </div>
+
+    <div id="login-error" class="login-error">Use seu e-mail @decolar.com ou @despegar.com</div>
+    <input type="email" id="inp-email" class="login-email-input" placeholder="nome@decolar.com" autocomplete="email"/>
+    <input type="password" id="inp-pass" class="login-email-input" placeholder="••••••••" autocomplete="current-password" style="margin-top:8px"/>
+    <button id="btn-email-login" onclick="emailLogin()">Entrar</button>
+  </div>
+  <p class="login-note">Uso interno Decolar · Despegar — acesso restrito</p>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <!-- Banner de instalação (Android) -->
+  <div id="install-banner">
+    <p><b>Instalar como app</b>Adicione à tela inicial para acesso rápido</p>
+    <button id="btn-install" onclick="installPWA()">Instalar</button>
+    <button id="btn-install-close" onclick="document.getElementById('install-banner').classList.remove('show')">✕</button>
+  </div>
+
+  <!-- ── TELA: PAÍSES ── -->
+  <div id="sc-countries" class="screen active">
+    <div class="topbar safe-top">
+      <div class="tb-info">
+        <div class="tb-title">despegar</div>
+        <div class="tb-sub">Checklist de salas</div>
+      </div>
+      <div id="user-avatar-wrap"></div>
+    </div>
+    <div class="ctry-body">
+      <div class="sec-lbl">Selecione o país</div>
+      <div class="ctry-grid">
+        <button class="ctry-card" onclick="goHome('BR')">
+          <span class="ctry-flag">🇧🇷</span>
+          <span class="ctry-name">Brasil</span>
+          <span class="ctry-rooms">8 salas</span>
+          <span class="alert-dot" title="Alertas"></span>
+        </button>
+        <button class="ctry-card" onclick="goHome('AR')">
+          <span class="ctry-flag">🇦🇷</span>
+          <span class="ctry-name">Argentina</span>
+          <span class="ctry-rooms">6 salas</span>
+          <span class="alert-dot"></span>
+        </button>
+        <button class="ctry-card" onclick="goHome('MX')">
+          <span class="ctry-flag">🇲🇽</span>
+          <span class="ctry-name">México</span>
+          <span class="ctry-rooms">4 salas</span>
+        </button>
+        <button class="ctry-card" onclick="goHome('CO')">
+          <span class="ctry-flag">🇨🇴</span>
+          <span class="ctry-name">Colombia</span>
+          <span class="ctry-rooms">3 salas</span>
+        </button>
+        <button class="ctry-card" onclick="goHome('CL')">
+          <span class="ctry-flag">🇨🇱</span>
+          <span class="ctry-name">Chile</span>
+          <span class="ctry-rooms">3 salas</span>
+          <span class="alert-dot"></span>
+        </button>
+        <button class="ctry-card" onclick="goHome('PE')">
+          <span class="ctry-flag">🇵🇪</span>
+          <span class="ctry-name">Peru</span>
+          <span class="ctry-rooms">2 salas</span>
+        </button>
+      </div>
+      <div class="sum-grid" style="padding:0">
+        <div class="sum-card"><div class="sum-lbl">Total de salas</div><div class="sum-val" style="color:var(--brand)">26</div></div>
+        <div class="sum-card"><div class="sum-lbl">Alertas ativos</div><div class="sum-val" style="color:var(--err)">4</div></div>
+      </div>
+    </div>
+    <div class="bnav safe-bot">
+      <button class="ntab active" onclick="showTab('countries')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Salas
+      </button>
+      <button class="ntab" onclick="showTab('monitor')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        Monitor
+      </button>
+      <button class="ntab">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Histórico
+      </button>
+      <button class="ntab" onclick="logout()">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sair
+      </button>
+    </div>
+  </div>
+
+  <!-- ── TELA: SALAS DO PAÍS ── -->
+  <div id="sc-home" class="screen">
+    <div class="topbar safe-top" id="home-tbar">
+      <button class="tb-back" onclick="goCountries()">‹</button>
+      <div class="tb-info">
+        <div class="tb-title" id="home-title"></div>
+        <div class="tb-sub" id="home-city"></div>
+      </div>
+      <div class="tb-right" id="home-time"></div>
+    </div>
+    <div class="scrl">
+      <div id="rooms-list"></div>
+      <div class="sum-grid">
+        <div class="sum-card"><div class="sum-lbl">Vistoriadas</div><div class="sum-val" style="color:var(--ok)" id="sum-ok">—</div></div>
+        <div class="sum-card"><div class="sum-lbl">Alertas</div><div class="sum-val" style="color:var(--err)" id="sum-al">—</div></div>
+      </div>
+    </div>
+    <div class="bnav safe-bot">
+      <button class="ntab active" onclick="showTab('countries')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Salas</button>
+      <button class="ntab" onclick="showTab('monitor')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Monitor</button>
+      <button class="ntab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</button>
+      <button class="ntab" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sair</button>
+    </div>
+  </div>
+
+  <!-- ── TELA: CHECKLIST ── -->
+  <div id="sc-check" class="screen">
+    <div class="ck-hdr br" id="ck-hdr">
+      <button class="ck-back" onclick="goBack()">‹ Salas</button>
+      <div class="ck-nm" id="ck-nm">—</div>
+      <div class="ck-sb" id="ck-sb">—</div>
+      <div class="prog-wrap"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    </div>
+    <div class="scrl" id="ck-body">
+      <!-- items gerados por JS -->
+    </div>
+    <div class="bnav safe-bot">
+      <button class="ntab active" onclick="goBack()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Voltar</button>
+      <button class="ntab" onclick="openSheet('alert')"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>Alertar</button>
+      <button class="ntab" onclick="openSheet('report')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Relatório</button>
+      <button class="ntab" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sair</button>
+    </div>
+  </div>
+
+  <!-- ── TELA: MONITOR ── -->
+  <div id="sc-monitor" class="screen">
+    <div class="mon-hdr topbar safe-top">
+      <div class="tb-info">
+        <div class="tb-title">Monitoramento</div>
+        <div class="live-row">
+          <span class="live-dot"></span>
+          <span style="font-size:11px;color:rgba(255,255,255,.75)">Ao vivo · todas as salas</span>
+        </div>
+      </div>
+    </div>
+    <div class="mon-banner">
+      <div class="mon-banner-title">⚠ 2 salas sem rede detectadas</div>
+      <div class="mon-banner-desc">Rio de Janeiro (BR) e Bariloche (AR) estão offline agora</div>
+      <button class="mon-banner-btn" onclick="openSheet('alert')">Notificar TI agora</button>
+    </div>
+    <div class="mon-filter">
+      <button class="fbt active" onclick="setFilt(this,'all')">Todas</button>
+      <button class="fbt" onclick="setFilt(this,'critical')">Críticas</button>
+      <button class="fbt" onclick="setFilt(this,'offline')">Sem rede</button>
+      <button class="fbt" onclick="setFilt(this,'energy')">Sem energia</button>
+      <button class="fbt" onclick="setFilt(this,'ok')">OK</button>
+    </div>
+    <div class="scrl" id="mon-list"></div>
+    <div class="bnav safe-bot">
+      <button class="ntab" onclick="showTab('countries')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Salas</button>
+      <button class="ntab active" onclick="showTab('monitor')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Monitor</button>
+      <button class="ntab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Histórico</button>
+      <button class="ntab" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sair</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheets globais -->
+<div class="sh-ov" id="sh-ov" onclick="closeSheets()"></div>
+<div class="sheet" id="sh-alert">
+  <div class="sh-hdl"></div>
+  <div class="sh-body">
+    <div class="sh-title">Enviar alerta</div>
+    <div class="sh-sub" id="al-sub">Selecione o time responsável</div>
+    <button class="team-btn" onclick="doAlert('TI / Infraestrutura')"><span class="t-ico">💻</span><span><span class="tnm">TI / Infraestrutura</span><span class="tds">Rede, energia, câmera, cabos</span></span></button>
+    <button class="team-btn" onclick="doAlert('Facilities / Predial')"><span class="t-ico">🏢</span><span><span class="tnm">Facilities / Predial</span><span class="tds">Energia, AC, iluminação, limpeza</span></span></button>
+    <button class="team-btn" onclick="doAlert('AV / Som')"><span class="t-ico">🎧</span><span><span class="tnm">AV / Som</span><span class="tds">Microfones, caixas, sistema de áudio</span></span></button>
+    <button class="sh-cancel" onclick="closeSheets()">Cancelar</button>
+  </div>
+</div>
+<div class="sheet" id="sh-report">
+  <div class="sh-hdl"></div>
+  <div class="sh-body">
+    <div class="sh-title" id="rep-title">Relatório de vistoria</div>
+    <div class="sh-sub" id="rep-sub"></div>
+    <div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Videoconferência</div><div id="rep-v"></div></div>
+    <div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Áudio</div><div id="rep-a"></div></div>
+    <div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Conectividade</div><div id="rep-c"></div></div>
+    <div style="margin-bottom:16px"><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Ambiente</div><div id="rep-b"></div></div>
+    <div class="share-grid">
+      <button class="share-btn pri" onclick="doShare('Slack')"><span>💬</span>Slack</button>
+      <button class="share-btn pri" onclick="doShare('E-mail')"><span>📧</span>E-mail</button>
+      <button class="share-btn" onclick="doShare('PDF')"><span>📄</span>Exportar PDF</button>
+      <button class="share-btn" onclick="doShare('WhatsApp')"><span>📱</span>WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIGURAÇÃO ─────────────────────────────────────────────────────────────
+// SUBSTITUA pelo Client ID real do Google Cloud Console da Despegar
+const GOOGLE_CLIENT_ID = "SEU_CLIENT_ID_AQUI.apps.googleusercontent.com";
+const ALLOWED_DOMAINS  = ["decolar.com", "despegar.com"];
+
+// ─── DADOS ────────────────────────────────────────────────────────────────────
+const REGIONS = {
+  BR:{label:"Brasil",city:"Alphaville, SP",isBR:true,sections:[{label:"Piso 2",rooms:[
+    {id:"cairo",  name:"Cairo",          meta:"8p · Polycom, TV, Zoom",status:"pending"},
+    {id:"bogota", name:"Bogotá",          meta:"12p · Polycom, TV, Zoom",status:"ok"},
+    {id:"rio",    name:"Rio de Janeiro",  meta:"12p · Polycom, TV, Zoom",status:"alert",alerts:2},
+    {id:"bsas",   name:"Buenos Aires",   meta:"6p · Polycom, TV",status:"new"},
+    {id:"toquio", name:"Tóquio",          meta:"8p · Polycom, TV, Zoom",status:"new"},
+    {id:"kl",     name:"Kuala Lumpur",   meta:"4p · Polycom, TV",status:"new"},
+    {id:"cdmx",   name:"Cidade de México",meta:"4p · Polycom",status:"new"},
+    {id:"pequim", name:"Pequim",          meta:"5p · Polycom, TV",status:"new"},
+  ]}]},
+  AR:{label:"Argentina",city:"Buenos Aires",isBR:false,sections:[{label:"Palermo · Piso 8",rooms:[
+    {id:"ar-men",name:"Mendoza",  meta:"10p",status:"ok"},
+    {id:"ar-bar",name:"Bariloche",meta:"6p",status:"alert",alerts:1},
+    {id:"ar-ush",name:"Ushuaia",  meta:"4p",status:"new"},
+    {id:"ar-igu",name:"Iguazú",   meta:"12p",status:"new"},
+    {id:"ar-cor",name:"Córdoba",  meta:"8p",status:"new"},
+    {id:"ar-sal",name:"Salta",    meta:"6p",status:"pending"},
+  ]}]},
+  MX:{label:"México",city:"Ciudad de México",isBR:false,sections:[{label:"Polanco · Piso 4",rooms:[
+    {id:"mx-can",name:"Cancún",      meta:"8p",status:"ok"},
+    {id:"mx-oax",name:"Oaxaca",      meta:"6p",status:"new"},
+    {id:"mx-gua",name:"Guadalajara", meta:"10p",status:"alert",alerts:1},
+    {id:"mx-tul",name:"Tulum",       meta:"4p",status:"new"},
+  ]}]},
+  CO:{label:"Colombia",city:"Bogotá",isBR:false,sections:[{label:"Chapinero · Piso 3",rooms:[
+    {id:"co-car",name:"Cartagena",  meta:"8p",status:"new"},
+    {id:"co-med",name:"Medellín",   meta:"6p",status:"pending"},
+    {id:"co-sma",name:"Santa Marta",meta:"4p",status:"new"},
+  ]}]},
+  CL:{label:"Chile",city:"Santiago",isBR:false,sections:[{label:"Providencia · Piso 5",rooms:[
+    {id:"cl-ata",name:"Atacama",         meta:"8p",status:"ok"},
+    {id:"cl-pat",name:"Patagônia",       meta:"10p",status:"new"},
+    {id:"cl-tor",name:"Torres del Paine",meta:"6p",status:"alert",alerts:1},
+  ]}]},
+  PE:{label:"Peru",city:"Lima",isBR:false,sections:[{label:"Miraflores · Piso 2",rooms:[
+    {id:"pe-mac",name:"Machu Picchu",meta:"10p",status:"new"},
+    {id:"pe-cus",name:"Cusco",       meta:"6p",status:"new"},
+  ]}]},
+};
+
+const MON_ROOMS = [
+  {name:"Rio de Janeiro",loc:"Brasil · Alphaville",tags:[{l:"Sem rede",c:"fail"},{l:"TV online",c:"ok"}],time:"Detectado há 3 min",critical:true,type:"offline"},
+  {name:"Bariloche",loc:"Argentina · Buenos Aires",tags:[{l:"Sem rede",c:"fail"},{l:"Câmera offline",c:"fail"}],time:"Detectado há 7 min",critical:true,type:"offline"},
+  {name:"Guadalajara",loc:"México · CDMX",tags:[{l:"Rede OK",c:"ok"},{l:"Sem energia TV",c:"warn"}],time:"Detectado há 12 min",critical:true,type:"energy"},
+  {name:"Salta",loc:"Argentina · Buenos Aires",tags:[{l:"Sem energia",c:"fail"},{l:"Sem rede",c:"fail"}],time:"Detectado há 35 min",critical:true,type:"energy"},
+  {name:"Cairo",loc:"Brasil · Alphaville",tags:[{l:"Rede OK",c:"ok"},{l:"TV OK",c:"ok"},{l:"Câmera OK",c:"ok"}],time:"Última checagem 5 min",critical:false,type:"ok"},
+  {name:"Bogotá",loc:"Brasil · Alphaville",tags:[{l:"Rede OK",c:"ok"},{l:"TV OK",c:"ok"}],time:"Última checagem 2 min",critical:false,type:"ok"},
+  {name:"Mendoza",loc:"Argentina · Buenos Aires",tags:[{l:"Rede OK",c:"ok"},{l:"Câmera OK",c:"ok"}],time:"Última checagem 1 min",critical:false,type:"ok"},
+];
+
+const CHECK_ITEMS = {
+  v:[{k:"tv",l:"TV / Monitor",d:"Liga, exibe imagem, sem ruído"},{k:"cam",l:"Câmera de videoconferência",d:"Polycom / Logitech aparece no sistema"},{k:"hdmi1",l:"Cabo HDMI — TV",d:"Presente, transmite sinal sem falha"},{k:"hdmi2",l:"Cabo HDMI — Câmera",d:"Segundo cabo presente e funcionando"}],
+  a:[{k:"mic1",l:"Microfone principal",d:"Capta voz, sem eco ou ruído"},{k:"mic2",l:"Microfones adicionais",d:"Todos os mics de mesa OK"},{k:"spk",l:"Alto-falante",d:"Som claro, sem distorção"}],
+  c:[{k:"wifi",l:"Wi-Fi",d:"Rede corporativa acessível"},{k:"rj45",l:"Cabo de rede (RJ-45)",d:"Disponível e porta ativa"}],
+  b:[{k:"luz",l:"Iluminação",d:"Luzes OK, sem lâmpadas queimadas"},{k:"ac",l:"Ar-condicionado",d:"Funcionando, controle disponível"},{k:"limpeza",l:"Limpeza e organização",d:"Mesa limpa, cadeiras arrumadas"}],
+};
+
+const GRP_LABELS = {v:"📹 Videoconferência",a:"🎙 Áudio",c:"📡 Conectividade",b:"🏠 Ambiente"};
+
+// ─── ESTADO ───────────────────────────────────────────────────────────────────
+let curUser = null, curRegion = "BR", curRoom = null, monFilt = "all";
+let deferredInstall = null;
+
+// ─── SERVICE WORKER ───────────────────────────────────────────────────────────
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(console.error);
+}
+
+// ─── PWA INSTALL ──────────────────────────────────────────────────────────────
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstall = e;
+  document.getElementById("install-banner").classList.add("show");
+});
+function installPWA() {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  deferredInstall.userChoice.then(() => {
+    deferredInstall = null;
+    document.getElementById("install-banner").classList.remove("show");
+  });
+}
+
+// ─── GOOGLE AUTH ──────────────────────────────────────────────────────────────
+window.onGoogleLibraryLoad = function() {
+  if (GOOGLE_CLIENT_ID === "SEU_CLIENT_ID_AQUI.apps.googleusercontent.com") return;
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleLogin,
+    auto_select: true,
+  });
+  google.accounts.id.renderButton(
+    document.getElementById("google-btn-wrap"),
+    { theme:"outline", size:"large", text:"signin_with", locale:"pt-BR", width:280 }
+  );
+  google.accounts.id.prompt();
+};
+
+function handleGoogleLogin(response) {
+  const payload = JSON.parse(atob(response.credential.split(".")[1]));
+  const email   = payload.email || "";
+  const domain  = email.split("@")[1] || "";
+  if (!ALLOWED_DOMAINS.includes(domain)) {
+    showLoginError("Acesso restrito a @decolar.com e @despegar.com");
+    return;
+  }
+  curUser = { name: payload.name, email, picture: payload.picture };
+  startApp();
+}
+
+// Login por e-mail/senha (fallback — integrar com seu IdP)
+function emailLogin() {
+  const email  = document.getElementById("inp-email").value.trim();
+  const domain = (email.split("@")[1] || "").toLowerCase();
+  if (!ALLOWED_DOMAINS.includes(domain)) {
+    showLoginError("Use seu e-mail @decolar.com ou @despegar.com");
+    return;
+  }
+  curUser = { name: email.split("@")[0], email, picture: null };
+  startApp();
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById("login-error");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function logout() {
+  curUser = null;
+  document.getElementById("app").classList.remove("show");
+  document.getElementById("login").classList.remove("hide");
+  if (typeof google !== "undefined") google.accounts.id.disableAutoSelect();
+}
+
+// ─── START APP ────────────────────────────────────────────────────────────────
+function startApp() {
+  document.getElementById("login").classList.add("hide");
+  document.getElementById("app").classList.add("show");
+  // Avatar
+  const w = document.getElementById("user-avatar-wrap");
+  if (curUser.picture) {
+    w.innerHTML = `<img src="${curUser.picture}" class="user-avatar" alt="${curUser.name}"/>`;
+  } else {
+    const ini = (curUser.name||"U").slice(0,2).toUpperCase();
+    w.innerHTML = `<div class="user-initials">${ini}</div>`;
+  }
+  tick();
+  setInterval(tick, 60000);
+  renderMon("all");
+  buildChecklist();
+}
+
+// ─── SPLASH ───────────────────────────────────────────────────────────────────
+setTimeout(() => {
+  document.getElementById("splash").classList.add("hide");
+  setTimeout(() => document.getElementById("splash").remove(), 500);
+}, 1600);
+
+// ─── RELÓGIO ──────────────────────────────────────────────────────────────────
+function tick() {
+  const s = new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const el = document.getElementById("home-time");
+  if (el) el.textContent = s;
+}
+
+// ─── NAVEGAÇÃO ────────────────────────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  const el = document.getElementById(id);
+  if (el) el.classList.add("active");
+}
+
+function showTab(tab) {
+  closeSheets();
+  if (tab === "monitor") { show("sc-monitor"); renderMon(monFilt); }
+  else if (tab === "countries") { show("sc-countries"); }
+}
+
+function goHome(code) {
+  curRegion = code || curRegion;
+  const r = REGIONS[curRegion];
+  const tb = document.getElementById("home-tbar");
+  tb.className = "topbar safe-top " + (r.isBR ? "" : "other");
+  document.getElementById("home-title").textContent = r.label;
+  document.getElementById("home-city").textContent  = r.city;
+  renderRooms();
+  show("sc-home");
+}
+
+function goCountries() { closeSheets(); show("sc-countries"); }
+function goBack()      { closeSheets(); show("sc-home"); }
+
+// ─── LISTA DE SALAS ───────────────────────────────────────────────────────────
+function renderRooms() {
+  const r = REGIONS[curRegion];
+  let html = "", ok = 0, al = 0;
+  r.sections.forEach(sec => {
+    html += `<div style="font-size:11px;color:var(--text3);padding:14px 16px 6px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">${sec.label}</div>`;
+    sec.rooms.forEach(rm => {
+      const badge = rm.status==="ok" ? `<span class="badge b-ok">OK</span>`
+                  : rm.status==="alert" ? `<span class="badge b-al">${rm.alerts} alerta${rm.alerts>1?"s":""}</span>`
+                  : rm.status==="pending" ? `<span class="badge b-pe">Pendente</span>`
+                  : `<span class="badge b-nw">Não vistoriada</span>`;
+      const ib = rm.status==="ok"?"var(--okbg)":rm.status==="alert"?"var(--errbg)":rm.status==="pending"?"var(--warnbg)":"var(--brl)";
+      const ico= rm.status==="ok"?"✅":rm.status==="alert"?"⚠️":rm.status==="pending"?"🕐":"🏢";
+      html += `<div class="room-item" onclick="openRoom('${rm.id}','${rm.name}','${rm.meta}')">
+        <div class="ri-ico" style="background:${ib}">${ico}</div>
+        <div class="ri-inf"><div class="ri-nm">${rm.name}</div><div class="ri-mt">${rm.meta}</div></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">${badge}<span style="color:var(--text3);font-size:18px">›</span></div>
+      </div>`;
+      if(rm.status==="ok") ok++;
+      if(rm.status==="alert") al += rm.alerts||1;
+    });
+  });
+  document.getElementById("rooms-list").innerHTML = html;
+  document.getElementById("sum-ok").textContent = ok;
+  document.getElementById("sum-al").textContent = al;
+}
+
+// ─── CHECKLIST ────────────────────────────────────────────────────────────────
+function buildChecklist() {
+  let html = "";
+  Object.entries(CHECK_ITEMS).forEach(([g, items]) => {
+    html += `<div class="grp-ttl">${GRP_LABELS[g]}</div>`;
+    items.forEach(it => {
+      html += `<div class="ci" data-k="${it.k}">
+        <div class="ci-lbl">${it.l}</div>
+        <div class="ci-dsc">${it.d}</div>
+        <div class="flag-row">
+          <button class="fb" onclick="sf(this,'ok')">✓ OK</button>
+          <button class="fb" onclick="sf(this,'fail')">✗ Falha</button>
+          <button class="fb" onclick="sf(this,'na')">N/A</button>
+        </div>
+        <div class="photo-sec" id="ps-${it.k}">
+          <div class="upload-zone">
+            <input type="file" accept="image/*" capture="environment" multiple onchange="addPhotos(this,'${it.k}')"/>
+            <span class="upload-zone-icon">📷</span>
+            <div class="upload-zone-txt"><b>Foto / evidência</b> — câmera ou galeria</div>
+          </div>
+          <div class="thumbs-row" id="th-${it.k}"></div>
+        </div>
+      </div>`;
+    });
+  });
+  html += `<div style="padding:16px;display:flex;gap:10px">
+    <button onclick="openSheet('alert')" style="flex:1;padding:14px;background:var(--errbg);border:1.5px solid var(--errbd);border-radius:12px;font-size:14px;font-weight:700;color:var(--err)">⚠ Alertar</button>
+    <button onclick="openSheet('report')" style="flex:1;padding:14px;background:var(--brand);border:none;border-radius:12px;font-size:14px;font-weight:700;color:#fff">📋 Relatório</button>
+  </div>`;
+  document.getElementById("ck-body").innerHTML = html;
+}
+
+function openRoom(id, name, meta) {
+  curRoom = {id, name, meta};
+  document.getElementById("ck-nm").textContent = name;
+  document.getElementById("ck-sb").textContent = meta + " · " + REGIONS[curRegion].city;
+  document.getElementById("ck-hdr").className = "ck-hdr " + (REGIONS[curRegion].isBR ? "br" : "ot");
+  document.querySelectorAll("#ck-body .fb").forEach(b => b.className = "fb");
+  document.querySelectorAll("#ck-body .photo-sec").forEach(p => p.classList.remove("on"));
+  document.querySelectorAll("#ck-body .thumbs-row").forEach(t => t.innerHTML = "");
+  updProg();
+  show("sc-check");
+}
+
+function sf(btn, state) {
+  btn.closest(".flag-row").querySelectorAll(".fb").forEach(b => b.className = "fb");
+  btn.className = "fb " + state;
+  const k = btn.closest(".ci").dataset.k;
+  const ps = document.getElementById("ps-" + k);
+  if (ps) ps.classList.toggle("on", state === "fail" || state === "ok");
+  updProg();
+}
+
+function updProg() {
+  const rows = document.querySelectorAll("#ck-body .flag-row");
+  const done = [...rows].filter(r => r.querySelector(".fb.ok,.fb.fail,.fb.na")).length;
+  document.getElementById("prog-fill").style.width = Math.round(done/rows.length*100) + "%";
+}
+
+// Upload de foto real com FileReader
+function addPhotos(input, key) {
+  const thumbs = document.getElementById("th-" + key);
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wrap = document.createElement("div");
+      wrap.className = "thumb";
+      wrap.innerHTML = `<img src="${e.target.result}" alt="Evidência"/><button class="thumb-rm" onclick="this.parentNode.remove()" aria-label="Remover">✕</button>`;
+      thumbs.appendChild(wrap);
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = "";
+}
+
+// ─── MONITOR ─────────────────────────────────────────────────────────────────
+function setFilt(btn, filt) {
+  monFilt = filt;
+  document.querySelectorAll(".fbt").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderMon(filt);
+}
+
+function renderMon(filt) {
+  const filtered = MON_ROOMS.filter(r =>
+    filt === "all" || r.type === filt || (filt === "critical" && r.critical)
+  );
+  const tclass = {ok:"tag-ok", fail:"tag-fail", warn:"tag-warn"};
+  const icoMap  = {offline:"📵", energy:"⚡", ok:"✅"};
+  const ibMap   = {offline:"var(--errbg)", energy:"var(--warnbg)", ok:"var(--okbg)"};
+  document.getElementById("mon-list").innerHTML = filtered.map(r => `
+    <div class="mon-room">
+      <div class="mon-ico" style="background:${ibMap[r.type]||"var(--okbg)"}">${icoMap[r.type]||"✅"}</div>
+      <div class="mon-inf">
+        <div class="mon-nm">${r.name}</div>
+        <div class="mon-loc">${r.loc}</div>
+        <div class="mon-tags">${r.tags.map(t=>`<span class="mon-tag ${tclass[t.c]||"tag-ok"}">${t.l}</span>`).join("")}</div>
+        <div class="mon-time">${r.time}</div>
+      </div>
+      ${r.critical ? `<button class="mon-act" onclick="openSheet('alert')">Alertar</button>` : ""}
+    </div>`).join("");
+}
+
+// ─── SHEETS ───────────────────────────────────────────────────────────────────
+function openSheet(which) {
+  if (which === "report") buildReport();
+  document.getElementById("sh-ov").classList.add("open");
+  document.getElementById("sh-" + which).classList.add("open");
+}
+function closeSheets() {
+  document.getElementById("sh-ov").classList.remove("open");
+  document.querySelectorAll(".sheet").forEach(s => s.classList.remove("open"));
+}
+
+function buildReport() {
+  document.getElementById("rep-title").textContent = "Relatório — " + (curRoom?.name||"Sala");
+  const now = new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  document.getElementById("rep-sub").textContent = now + " · " + REGIONS[curRegion].city + " · " + (curUser?.name||"");
+  const map = {v:"rep-v", a:"rep-a", c:"rep-c", b:"rep-b"};
+  Object.entries(CHECK_ITEMS).forEach(([g, items]) => {
+    document.getElementById(map[g]).innerHTML = items.map(it => {
+      const btn = document.querySelector(`#ck-body .ci[data-k="${it.k}"] .fb.ok,#ck-body .ci[data-k="${it.k}"] .fb.fail,#ck-body .ci[data-k="${it.k}"] .fb.na`);
+      let st = "pe", lb = "Pendente";
+      if (btn) {
+        if (btn.classList.contains("ok"))   { st="ok";   lb="OK"; }
+        else if (btn.classList.contains("fail")) { st="fail"; lb="Falha"; }
+        else { st="na"; lb="N/A"; }
+      }
+      const hp = (document.getElementById("th-"+it.k)?.children.length||0) > 0;
+      return `<div class="rep-row"><span class="rep-nm">${it.l}${hp?" 📷":""}</span><span class="rs rs-${st}">${lb}</span></div>`;
+    }).join("");
+  });
+}
+
+function doAlert(team) {
+  closeSheets();
+  alert(`✅ Alerta enviado!\n\nTime: ${team}\nSala: ${curRoom?.name||"Monitor"}\nLocal: ${REGIONS[curRegion]?.city||""}\nResponsável: ${curUser?.name||""}\n\nNotificação enviada via Slack e e-mail.`);
+}
+function doShare(ch) {
+  closeSheets();
+  alert(`📤 Relatório compartilhado via ${ch}\n\nSala: ${curRoom?.name||""}\nResponsável: ${curUser?.name||""}`);
+}
+</script>
+</body>
+</html>
