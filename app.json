@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Despegar Salas",
+    "slug": "despsalas",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6600FF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.despegar.salas"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6600FF"
+      },
+      "package": "com.despegar.salas"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "470cc07c-84b0-449d-9e47-2f78f63b4e39"
+      }
+    },
+    "owner": "tarlley"
+  }
+}
